@@ -1,6 +1,6 @@
 rule all:
     input:
-        expand("results/mmseqs_search/{prefix}.m8", prefix=config["input_files"]),
+        expand("results/indices/{prefix}.json", prefix=config["input_files"]),
 
 
 rule mmseqs_createdb:
@@ -99,3 +99,20 @@ rule mmseqs_convertalis:
         mmseqs convertalis --threads {threads} \
             {input.db} {input.db} {params.search_prefix} {output} &> {log}
         """
+
+rule compute_indices:
+    input:
+        clust="results/mmseqs_tsv/{prefix}.tsv",
+        aln="results/mmseqs_search/{prefix}.m8",
+    output:
+        "results/indices/{prefix}.json",
+    threads: 4
+    conda: "envs/numpy.yml"
+    params:
+        random_sampling=False,
+        seq_obs=0,
+    log:
+        "logs/compute_indices.{prefix}.log"
+    script:
+        "scripts/MD.py"
+

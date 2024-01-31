@@ -6,9 +6,9 @@ input_files:
 # Path to tmp folder
 tmp_path: "/tmp/test_MD"
 
-subsample: False # TODO
-
-samplesize: Null # TODO
+random_sampling: False
+seq_obs: 0 # Set to nonzero value if random_sampling True
+random_seed: 12345 # For reproducibility
 
 # Default values from MMseqs2, adjust as appropriate
 mmseqs_params:

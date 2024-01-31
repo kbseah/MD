@@ -109,8 +109,9 @@ rule compute_indices:
     threads: 4
     conda: "envs/numpy.yml"
     params:
-        random_sampling=False,
-        seq_obs=0,
+        random_sampling=config['random_sampling'],
+        seq_obs=config['seq_obs'],
+        random_seed=config['random_seed'],
     log:
         "logs/compute_indices.{prefix}.log"
     script:

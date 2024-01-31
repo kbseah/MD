@@ -50,6 +50,11 @@ def get_args():
         observations to subsample without replacement""",
     )
     parser.add_argument(
+        "--random_seed",
+        type=int,
+        help="Random seed for random subsampling (default: None)"
+    )
+    parser.add_argument(
         "-T",
         "--cpus",
         default=int(mp.cpu_count()),
@@ -70,6 +75,7 @@ if __name__ == "__main__":
             'output' : snakemake.output[0],
             'random_sampling' : snakemake.params['random_sampling'],
             'seq_obs' : int(snakemake.params['seq_obs']),
+            'random_seed' : int(snakemake.params['random_seed']),
             'cpus' : int(snakemake.threads),
         }
         sys.stderr = open(snakemake.log[0], "w") # redirect error msgs to log
@@ -85,6 +91,8 @@ if __name__ == "__main__":
             clustlist.append(l.rstrip())
 
     if args['random_sampling']:
+        if args['random_seed']:
+            random.seed(int(args['random_seed']))
         rarvals = random.sample(clustlist, int(args['seq_obs']))
         clustlist = rarvals
 

@@ -1,0 +1,4 @@
+.snakemake
+/snakemake-env
+/logs
+/results

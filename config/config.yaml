@@ -1,0 +1,16 @@
+input_files:
+  bscg : "testdata/BSCGs.faa"
+  ecolig : "testdata/EcoliGs.faa"
+  gutg: "testdata/GutGs.faa"
+
+# Path to tmp folder
+tmp_path: "/tmp/test_MD"
+
+subsample: False # TODO
+
+samplesize: Null # TODO
+
+# Default values from MMseqs2, adjust as appropriate
+mmseqs_params:
+  min_seq_id: 0.000
+  evalue: 0.001

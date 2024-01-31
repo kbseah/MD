@@ -1,0 +1,101 @@
+rule all:
+    input:
+        expand("results/mmseqs_search/{prefix}.m8", prefix=config["input_files"]),
+
+
+rule mmseqs_createdb:
+    input:
+        lambda wildcards: config["input_files"][wildcards.prefix],
+    output:
+        "results/mmseqs_db/{prefix}",
+    conda:
+        "envs/mmseqs2.yml"
+    threads: 1
+    log:
+        "logs/mmseqs_createdb.{prefix}.log",
+    shell:
+        """
+        mmseqs createdb {input} {output} &> {log}
+        """
+
+
+rule mmseqs_cluster:
+    input:
+        "results/mmseqs_db/{prefix}",
+    output:
+        "results/mmseqs_cluster/{prefix}.index",
+    conda:
+        "envs/mmseqs2.yml"
+    threads: 16
+    params:
+        out_prefix="results/mmseqs_cluster/{prefix}",
+        tmp=config["tmp_path"],
+        minseqid=config["mmseqs_params"]["min_seq_id"],
+        evalue=config["mmseqs_params"]["evalue"],
+    log:
+        "logs/mmseqs_cluster.{prefix}.log",
+    shell:
+        """
+        mmseqs cluster --threads {threads} \
+            -e {params.evalue} --min-seq-id {params.minseqid} \
+            {input} {params.out_prefix} {params.tmp} &> {log}
+        """
+
+
+rule mmseqs_createtsv:
+    input:
+        db="results/mmseqs_db/{prefix}",
+        cluster="results/mmseqs_cluster/{prefix}.index",
+    output:
+        "results/mmseqs_tsv/{prefix}.tsv",
+    conda:
+        "envs/mmseqs2.yml"
+    log:
+        "logs/mmseqs_createtsv.{prefix}.log",
+    threads: 1
+    params:
+        clu_prefix="results/mmseqs_cluster/{prefix}",
+    shell:
+        """
+        mmseqs createtsv --threads {threads} {input.db} {input.db} {params.clu_prefix} {output} &> {log}
+        """
+
+
+rule mmseqs_search:
+    input:
+        db="results/mmseqs_db/{prefix}",
+    output:
+        "results/mmseqs_search/{prefix}.index",
+    conda:
+        "envs/mmseqs2.yml"
+    log:
+        "logs/mmseqs_search.{prefix}.log",
+    params:
+        tmp=config["tmp_path"],
+        search_prefix="results/mmseqs_search/{prefix}",
+    threads: 16
+    shell:
+        """
+        mmseqs search --threads {threads} \
+            {input.db} {input.db} {params.search_prefix} {params.tmp} &> {log}
+        """
+
+
+rule mmseqs_convertalis:
+    input:
+        db="results/mmseqs_db/{prefix}",
+        search="results/mmseqs_search/{prefix}.index",
+    output:
+        "results/mmseqs_search/{prefix}.m8",
+    conda:
+        "envs/mmseqs2.yml"
+    log:
+        "logs/mmseqs_convertalis.{prefix}.log",
+    params:
+        search_prefix="results/mmseqs_search/{prefix}",
+    threads: 16
+    shell:
+        """
+        mmseqs convertalis --threads {threads} \
+            {input.db} {input.db} {params.search_prefix} {output} &> {log}
+        """

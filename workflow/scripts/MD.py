@@ -45,7 +45,6 @@ def get_args():
         "-N",
         "--seq-obs",
         required=False,
-        nargs=1,
         type=int,
         help="""If randomly subsampling (option -r), N denotes the number of
         observations to subsample without replacement""",

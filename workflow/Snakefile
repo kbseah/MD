@@ -1,10 +1,6 @@
 rule all:
     input:
-        expand(
-            "results/indices/{tool}.{prefix}.json",
-            tool=["mmseqs", "diamond"],
-            prefix=config["input_files"],
-        ),
+        "results/indices/aggregated.tsv",
 
 
 rule mmseqs_createdb:
@@ -174,3 +170,21 @@ rule compute_indices:
         "logs/compute_indices.{tool}.{prefix}.log",
     script:
         "scripts/MD.py"
+
+
+rule aggregate_table:
+    input:
+        expand(
+            "results/indices/{tool}.{prefix}.json",
+            tool=["mmseqs", "diamond"],
+            prefix=config["input_files"],
+        ),
+    output:
+        "results/indices/aggregated.tsv",
+    conda:
+        "envs/numpy.yml"
+    threads: 1
+    log:
+        "logs/aggregate_tables.log",
+    script:
+        "scripts/aggregate_tables.py"

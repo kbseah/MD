@@ -1,6 +1,10 @@
 rule all:
     input:
-        expand("results/indices/{prefix}.json", prefix=config["input_files"]),
+        expand(
+            "results/indices/{tool}.{prefix}.json",
+            tool=["mmseqs", "diamond"],
+            prefix=config["input_files"],
+        ),
 
 
 rule mmseqs_createdb:
@@ -57,7 +61,8 @@ rule mmseqs_createtsv:
         clu_prefix="results/mmseqs_cluster/{prefix}",
     shell:
         """
-        mmseqs createtsv --threads {threads} {input.db} {input.db} {params.clu_prefix} {output} &> {log}
+        mmseqs createtsv --threads {threads} \
+            {input.db} {input.db} {params.clu_prefix} {output} &> {log}
         """
 
 
@@ -100,20 +105,72 @@ rule mmseqs_convertalis:
             {input.db} {input.db} {params.search_prefix} {output} &> {log}
         """
 
+
+rule diamond_makedb:
+    input:
+        lambda wildcards: config["input_files"][wildcards.prefix],
+    output:
+        "results/diamond_db/{prefix}.dmnd",
+    threads: 4
+    conda:
+        "envs/diamond.yml"
+    log:
+        "logs/diamond_makedb.{prefix}.log",
+    shell:
+        """
+        diamond makedb --in {input} --db {output} --threads {threads} &> {log}
+        """
+
+
+rule diamond_deepclust:
+    input:
+        "results/diamond_db/{prefix}.dmnd",
+    output:
+        "results/diamond_tsv/{prefix}.tsv",
+    threads: 12
+    conda:
+        "envs/diamond.yml"
+    log:
+        "logs/diamond_deepclust.{prefix}.log",
+    shell:
+        """
+        diamond deepclust --threads {threads} -d {input} -o {output} &> {log}
+        """
+
+
+rule diamond_realign:
+    input:
+        db="results/diamond_db/{prefix}.dmnd",
+        tsv="results/diamond_tsv/{prefix}.tsv",
+    output:
+        "results/diamond_search/{prefix}.m8",
+    threads: 12
+    conda:
+        "envs/diamond.yml"
+    log:
+        "logs/diamond_realign.{prefix}.log",
+    shell:
+        """
+        diamond realign --threads {threads} \
+            -d {input.db} --clusters {input.tsv} -o {output} &> {log}
+        """
+
+
 rule compute_indices:
     input:
-        clust="results/mmseqs_tsv/{prefix}.tsv",
-        aln="results/mmseqs_search/{prefix}.m8",
+        clust="results/{tool}_tsv/{prefix}.tsv",
+        aln="results/{tool}_search/{prefix}.m8",
     output:
-        "results/indices/{prefix}.json",
+        "results/indices/{tool}.{prefix}.json",
     threads: 4
-    conda: "envs/numpy.yml"
+    conda:
+        "envs/numpy.yml"
     params:
-        random_sampling=config['random_sampling'],
-        seq_obs=config['seq_obs'],
-        random_seed=config['random_seed'],
+        random_sampling=config["random_sampling"],
+        seq_obs=config["seq_obs"],
+        random_seed=config["random_seed"],
+        tool="{tool}",
     log:
-        "logs/compute_indices.{prefix}.log"
+        "logs/compute_indices.{tool}.{prefix}.log",
     script:
         "scripts/MD.py"
-

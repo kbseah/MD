@@ -52,7 +52,7 @@ def get_args():
     parser.add_argument(
         "--random_seed",
         type=int,
-        help="Random seed for random subsampling (default: None)"
+        help="Random seed for random subsampling (default: None)",
     )
     parser.add_argument(
         "-T",
@@ -61,24 +61,32 @@ def get_args():
         type=int,
         help="Max number of CPUs (default: total available)",
     )
+    parser.add_argument(
+        "--tool",
+        default="mmseqs",
+        type=str,
+        help="Tool used for clustering",
+    )
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
     return args
 
+
 if __name__ == "__main__":
     try:
         args = {
-            'input_clust' : snakemake.input['clust'],
-            'input_aln' : snakemake.input['aln'],
-            'output' : snakemake.output[0],
-            'random_sampling' : snakemake.params['random_sampling'],
-            'seq_obs' : int(snakemake.params['seq_obs']),
-            'random_seed' : int(snakemake.params['random_seed']),
-            'cpus' : int(snakemake.threads),
+            "input_clust": snakemake.input["clust"],
+            "input_aln": snakemake.input["aln"],
+            "output": snakemake.output[0],
+            "random_sampling": snakemake.params["random_sampling"],
+            "seq_obs": int(snakemake.params["seq_obs"]),
+            "random_seed": int(snakemake.params["random_seed"]),
+            "tool": snakemake.params["tool"],
+            "cpus": int(snakemake.threads),
         }
-        sys.stderr = open(snakemake.log[0], "w") # redirect error msgs to log
+        sys.stderr = open(snakemake.log[0], "w")  # redirect error msgs to log
     except NameError:
         args = vars(get_args())
 
@@ -86,20 +94,19 @@ if __name__ == "__main__":
     print(" -- Making Protein dictionary -- ", file=sys.stderr)
     clustlist = []
 
-    with open(args['input_clust']) as file:
+    with open(args["input_clust"]) as file:
         for l in file:
             clustlist.append(l.rstrip())
 
-    if args['random_sampling']:
-        if args['random_seed']:
-            random.seed(int(args['random_seed']))
-        rarvals = random.sample(clustlist, int(args['seq_obs']))
+    if args["random_sampling"]:
+        if args["random_seed"]:
+            random.seed(int(args["random_seed"]))
+        rarvals = random.sample(clustlist, int(args["seq_obs"]))
         clustlist = rarvals
 
     clusters = defaultdict(list)
 
-    pool = mp.Pool(args['cpus'])
-
+    pool = mp.Pool(args["cpus"])
 
     def make_clust_dict(clustlist):
         for l in clustlist:
@@ -107,27 +114,29 @@ if __name__ == "__main__":
             col2 = l.split("\t")[1]
             clusters[col1].append(col2)
 
-
     pool.apply_async(make_clust_dict(clustlist))
 
     # Generate a dictionary of pairwise distances
     print(" -- Collating pair-wise dissimilarities -- ", file=sys.stderr)
     alnlist = []
 
-    with open(args['input_aln']) as file:
+    with open(args["input_aln"]) as file:
         for l in file:
             alnlist.append(l.rstrip())
 
     pairsim = {}
-
 
     def make_pairsim_dict(alnlist):
         for l in alnlist:
             # first three columns: query, ref, id
             [col1, col2, col3] = l.split("\t")[0:3]
             # key on query-ref pairs (faster lookup than nested dict)
+            if args["tool"] == "diamond":
+                # Diamond reports percentages
+                # MMseqs reports fraction (0 to 1)
+                # Convert to fraction
+                col3 = float(col3) / 100
             pairsim[(col1, col2)] = col3
-
 
     pool.apply_async(make_pairsim_dict(alnlist))
 
@@ -135,15 +144,13 @@ if __name__ == "__main__":
     print(" -- Bringing things together -- ", file=sys.stderr)
     clustdist = defaultdict(list)
 
-
     def sorter(clusters, pairsim):
         for c in clusters:  # key name
             for a in clusters[c]:
                 # look up pairwise identity values from search output
-                if (c,a) in pairsim:
-                    id_val = pairsim[(c,a)]  # pairwise values in q
+                if (c, a) in pairsim:
+                    id_val = pairsim[(c, a)]  # pairwise values in q
                     clustdist[c].append(1 - float(id_val))
-
 
     pool.apply_async(sorter(clusters, pairsim))
 
@@ -156,31 +163,31 @@ if __name__ == "__main__":
 
     results = {}
     # Total Contigs
-    results['total_protein_coding'] = len(clustlist)
+    results["total_protein_coding"] = len(clustlist)
 
     # Protein Richness
-    results['protein_richness'] = len(clustdist)
+    results["protein_richness"] = len(clustdist)
 
     CDlens = [len(k) for k in clustdist.values()]
     tmp = np.sum(CDlens)
 
     # Shannon Diversity
     H = [(len(k) / tmp) * np.log(len(k) / tmp) for k in clustdist.values()]
-    results['shannon_diversity'] = np.sum(H) * -1
+    results["shannon_diversity"] = np.sum(H) * -1
 
     # Simpson Diversity
     S = [np.square(len(k) / tmp) for k in clustdist.values()]
-    results['simpson_evenness'] = 1 - np.sum(S)
+    results["simpson_evenness"] = 1 - np.sum(S)
 
     # Metagenomic diversity
     MD = [(1 + (np.sum(k)) / len(k)) for k in clustdist.values()]
-    results['protein_dissim_log10'] = np.log10(np.sum(MD))
-    results['md_index'] = (1 / results['total_protein_coding']) * np.sum(MD)
+    results["protein_dissim_log10"] = np.log10(np.sum(MD))
+    results["md_index"] = (1 / results["total_protein_coding"]) * np.sum(MD)
 
-    if args['output']:
-        with open(args['output'], "w") as fh:
-            fh.write(json.dumps(results,indent=4))
+    if args["output"]:
+        with open(args["output"], "w") as fh:
+            fh.write(json.dumps(results, indent=4))
     else:
-        print(json.dumps(results,indent=4), file=sys.stdout)
+        print(json.dumps(results, indent=4), file=sys.stdout)
 
     print("done", file=sys.stderr)

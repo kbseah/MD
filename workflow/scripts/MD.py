@@ -21,7 +21,6 @@ def configure_logger(log_path=None):
     formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
 
     if log_path:
-        print(f"Log path specified at {log_path}")
         log_fh = logging.FileHandler(log_path)
         log_fh.setLevel(logging.DEBUG)
         log_fh.setFormatter(formatter)

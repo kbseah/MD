@@ -14,6 +14,7 @@ import multiprocessing as mp
 import random
 from collections import defaultdict
 
+
 def configure_logger(log_path=None):
     logger = logging.getLogger("log")
     logger.setLevel(logging.DEBUG)
@@ -34,8 +35,10 @@ def configure_logger(log_path=None):
     # Redirect unhandled exceptions to logger
     def excepthook(exctype, value, traceback):
         logger.error("Exception", exc_info=(exctype, value, traceback))
+
     sys.excepthook = excepthook
     return logger
+
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -180,7 +183,11 @@ if __name__ == "__main__":
                     id_val = pairsim[(c, a)]  # pairwise values in q
                     clustdist[c].append(1 - float(id_val))
                 else:
-                    logger.warning("Cluster reference-query pair %s, %s not present in pairwise alignment results!", c, a)
+                    logger.warning(
+                        "Cluster reference-query pair %s, %s not present in pairwise alignment results!",
+                        c,
+                        a,
+                    )
                     pass
 
     pool.apply_async(sorter(clusters, pairsim))

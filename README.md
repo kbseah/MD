@@ -23,3 +23,10 @@ proteome sequences.
 ## Citation
 
 [pending]
+
+
+## To-do
+
+ - [x] Implement other clustering tools like diamond
+ - [ ] Tabular summary of results across all samples/tools
+ - [ ] Compare clustering samples separately vs. pooled cluster of all samples

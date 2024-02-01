@@ -151,6 +151,8 @@ if __name__ == "__main__":
                 if (c, a) in pairsim:
                     id_val = pairsim[(c, a)]  # pairwise values in q
                     clustdist[c].append(1 - float(id_val))
+                else:
+                    print(f"Cluster reference-query pair {c}, {a} not present in pairwise alignment results!", file=sys.stderr)
 
     pool.apply_async(sorter(clusters, pairsim))
 
